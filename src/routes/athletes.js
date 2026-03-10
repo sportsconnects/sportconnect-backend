@@ -1,7 +1,7 @@
 // src/routes/athletes.js
 const router         = require("express").Router()
 const User           = require("../models/User")
-const AthleteProfile = require("../models/Athleteprofile")
+const AthleteProfile = require("../models/AthleteProfileTemp")
 const { protect, restrictTo } = require("../middleware/auth")
 
 // ── GET /api/athletes 

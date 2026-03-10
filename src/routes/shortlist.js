@@ -1,7 +1,7 @@
 // src/routes/shortlists.js
 const router         = require("express").Router()
 const Shortlist      = require("../models/ShortList")
-const AthleteProfile = require("../models/Athleteprofile")
+const AthleteProfile = require("../models/AthleteProfileTemp")
 const { protect, restrictTo } = require("../middleware/auth")
 
 // ── GET /api/shortlists ───────────────────────────────────────
