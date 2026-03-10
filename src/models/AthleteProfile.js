@@ -33,8 +33,8 @@ const athleteProfileSchema = new mongoose.Schema(
     verified:   { type:Boolean, default:false },
 
     // Media
-    avatar:     { type:String }, // URL
-    coverImage: { type:String }, // URL
+    avatar:     { type:String }, 
+    coverImage: { type:String }, 
 
     // Achievements
     achievements: [
@@ -49,7 +49,7 @@ const athleteProfileSchema = new mongoose.Schema(
       {
         title:       { type:String },
         videoUrl:    { type:String },
-        videoId:     { type:String }, // YouTube ID
+        videoId:     { type:String }, 
         sport:       { type:String },
         featured:    { type:Boolean, default:false },
         likes:       { type:Number,  default:0 },
