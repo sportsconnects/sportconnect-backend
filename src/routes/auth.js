@@ -165,4 +165,21 @@ router.post("/login", async (req, res) => {
   }
 })
 
+
+// ── GET /api/auth/me — test protected route ──────────────────
+const { protect } = require("../middleware/auth")
+
+router.get("/me", protect, async (req, res) => {
+  res.json({
+    message: "Token is valid",
+    user: {
+      id:        req.user._id,
+      firstName: req.user.firstName,
+      lastName:  req.user.lastName,
+      email:     req.user.email,
+      role:      req.user.role,
+    }
+  })
+})
+
 module.exports = router
