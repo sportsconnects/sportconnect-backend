@@ -26,10 +26,21 @@ app.use(express.json())
 
 app.use(require("helmet")()) 
 
-app.use(require("express-mongo-sanitize")({
-  allowDots: true,
-  replaceWith: '_',
-}))
+app.use((req, res, next) => {
+  const sanitize = (obj) => {
+    if (!obj || typeof obj !== "object") return
+    for (const key of Object.keys(obj)) {
+      if (key.startsWith("$") || key.includes(".")) {
+        delete obj[key]
+      } else if (typeof obj[key] === "object") {
+        sanitize(obj[key])
+      }
+    }
+  }
+  sanitize(req.body)
+  sanitize(req.params)
+  next()
+})
 
 const rateLimit = require("express-rate-limit")
 app.use("/api/auth", rateLimit({ windowMs: 15*60*1000, max: 20 }))
