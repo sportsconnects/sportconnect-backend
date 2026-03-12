@@ -124,4 +124,35 @@ router.put("/profile", protect, restrictTo("athlete"), async (req, res) => {
   }
 })
 
+// POST /api/athletes/profile/setup
+router.post("/profile/setup", protect, restrictTo("athlete"), async (req, res) => {
+  try {
+    const { sport, position, region, classOf, school, gpa, height, weight, bio, achievements } = req.body
+
+    if (!sport || !position || !region || !classOf || !school) {
+      return res.status(400).json({ message: "Sport, position, region, class year and school are required" })
+    }
+
+    const profile = await AthleteProfile.findOneAndUpdate(
+      { user: req.user._id },
+      {
+        user: req.user._id,
+        sport, position, region, classOf, school,
+        gpa:          gpa          || null,
+        height:       height       || null,
+        weight:       weight       || null,
+        bio:          bio          || null,
+        achievements: achievements || [],
+        profileComplete: true,
+      },
+      { upsert: true, new: true, runValidators: true }
+    )
+
+    res.json({ message: "Profile setup complete", profile })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Failed to setup profile", error: err.message })
+  }
+})
+
 module.exports = router
