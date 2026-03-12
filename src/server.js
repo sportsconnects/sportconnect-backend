@@ -13,7 +13,6 @@ connectDB()
 const app = express()
 
 // ── Middleware ──────────────────────────────────────────────
-app.use(express.json())
 app.use(cors({
  origin: [
     "http://localhost:5173",
@@ -22,10 +21,15 @@ app.use(cors({
   ],
   credentials: true
 }))
+app.use(express.json())
+
 
 app.use(require("helmet")()) 
 
-app.use(require("express-mongo-sanitize")())
+app.use(require("express-mongo-sanitize")({
+  allowDots: true,
+  replaceWith: '_',
+}))
 
 const rateLimit = require("express-rate-limit")
 app.use("/api/auth", rateLimit({ windowMs: 15*60*1000, max: 20 }))
