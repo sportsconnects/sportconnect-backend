@@ -23,6 +23,13 @@ app.use(cors({
   credentials: true
 }))
 
+app.use(require("helmet")()) 
+
+app.use(require("express-mongo-sanitize")())
+
+const rateLimit = require("express-rate-limit")
+app.use("/api/auth", rateLimit({ windowMs: 15*60*1000, max: 20 }))
+
 // ── Routes
 app.use("/api/auth",       require("./routes/auth"))
 app.use("/api/athletes",   require("./routes/athletes"))
@@ -32,6 +39,7 @@ app.use("/api/messages",   require("./routes/messages"))
 app.use("/api/offers",     require("./routes/offers"))
 app.use("/api/posts",      require("./routes/posts"))
 app.use("/api/follows",    require("./routes/follows"))
+app.use("/api/ai", require("./routes/ai"))
 
 // ── Health check 
 app.get("/", (req, res) => {
