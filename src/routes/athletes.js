@@ -26,19 +26,21 @@ router.get("/", async (req, res) => {
       .populate("user", "firstName lastName email") 
       .sort(sortBy)
 
+      athletes = athletes.filter(a => a.user !== null)
     // If search query, filter by name
-    if (search) {
-      const q = search.toLowerCase()
-      athletes = athletes.filter(a => {
-        const fullName = `${a.user.firstName} ${a.user.lastName}`.toLowerCase()
-        return (
-          fullName.includes(q) ||
-          a.sport?.toLowerCase().includes(q) ||
-          a.position?.toLowerCase().includes(q) ||
-          a.school?.toLowerCase().includes(q)
-        )
-      })
-    }
+   if (search) {
+  const q = search.toLowerCase()
+  athletes = athletes.filter(a => {
+    if (!a.user) return false  // skip profiles with deleted users
+    const fullName = `${a.user.firstName || ""} ${a.user.lastName || ""}`.toLowerCase()
+    return (
+      fullName.includes(q) ||
+      a.sport?.toLowerCase().includes(q) ||
+      a.position?.toLowerCase().includes(q) ||
+      a.school?.toLowerCase().includes(q)
+    )
+  })
+}
 
     res.json({
       count:    athletes.length,
@@ -55,7 +57,11 @@ router.get("/", async (req, res) => {
 // Public — view a single athlete profile
 router.get("/:id", async (req, res) => {
   try {
-    const profile = await AthleteProfile.findOne({ user: req.params.id })
+    const User = require("../models/User")
+    const user = await User.findById(req.params.id).select("-password")
+    if (!user) return res.status(404).json({ message: "User not found" })
+
+    let profile = await AthleteProfile.findOne({ user: req.params.id })
       .populate("user", "firstName lastName email phone")
 
     if (!profile) {
@@ -65,14 +71,13 @@ router.get("/:id", async (req, res) => {
     profile.profileViews += 1
     await profile.save()
 
-    res.json({ profile })
+    res.json({ user, profile })
 
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: "Server error", error: error.message })
   }
 })
-
 // ── POST /api/athletes/profile 
 // Protected — athlete creates their profile after signup
 router.post("/profile", protect, restrictTo("athlete"), async (req, res) => {
