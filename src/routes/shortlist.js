@@ -1,6 +1,6 @@
 // src/routes/shortlist.js
-const router         = require("express").Router()
-const Shortlist      = require("../models/ShortList")
+const router = require("express").Router()
+const Shortlist = require("../models/ShortList")
 const AthleteProfile = require("../models/AthleteProfileTemp")
 const { protect, restrictTo } = require("../middleware/auth")
 
@@ -10,8 +10,8 @@ router.get("/", protect, restrictTo("recruiter"), async (req, res) => {
   try {
     const shortlist = await Shortlist.find({ recruiter: req.user._id })
       .populate({
-        path:     "athlete",
-        select:   "firstName lastName email",
+        path: "athlete",
+        select: "firstName lastName email",
       })
       .sort({ createdAt: -1 })
 
@@ -20,22 +20,22 @@ router.get("/", protect, restrictTo("recruiter"), async (req, res) => {
       shortlist.map(async (item) => {
         const profile = await AthleteProfile.findOne({ user: item.athlete._id })
         return {
-          _id:      item._id,
-          note:     item.note,
+          _id: item._id,
+          note: item.note,
           priority: item.priority,
-          list:     item.list,
-          savedAt:  item.createdAt,
+          list: item.list,
+          savedAt: item.createdAt,
           athlete: {
-            id:        item.athlete._id,
+            id: item.athlete._id,
             firstName: item.athlete.firstName,
-            lastName:  item.athlete.lastName,
-            email:     item.athlete.email,
-            sport:     profile?.sport     || null,
-            position:  profile?.position  || null,
-            region:    profile?.region    || null,
-            classOf:   profile?.classOf   || null,
-            gpa:       profile?.gpa       || null,
-            verified:  profile?.verified  || false,
+            lastName: item.athlete.lastName,
+            email: item.athlete.email,
+            sport: profile?.sport || null,
+            position: profile?.position || null,
+            region: profile?.region || null,
+            classOf: profile?.classOf || null,
+            gpa: profile?.gpa || null,
+            verified: profile?.verified || false,
           }
         }
       })
@@ -57,7 +57,8 @@ router.get("/", protect, restrictTo("recruiter"), async (req, res) => {
 router.post("/:athleteId", protect, restrictTo("recruiter"), async (req, res) => {
   try {
     const { athleteId } = req.params
-    const {note, list} = req.body
+    const note = req.body?.note || ""
+    const list = req.body?.list || "General"
 
     if (!athleteId) {
       return res.status(400).json({ message: "Athlete ID is required" })
@@ -71,9 +72,9 @@ router.post("/:athleteId", protect, restrictTo("recruiter"), async (req, res) =>
 
     const entry = await Shortlist.create({
       recruiter: req.user._id,
-      athlete:   athleteId,
-      note:      note || "",
-      list:      list || "General",
+      athlete: athleteId,
+      note: note || "",
+      list: list || "General",
     })
 
     // Increment recruiter views on athlete profile
@@ -104,7 +105,7 @@ router.patch("/:athleteId", protect, restrictTo("recruiter"), async (req, res) =
     const entry = await Shortlist.findOneAndUpdate(
       {
         recruiter: req.user._id,
-        athlete:   req.params.athleteId,
+        athlete: req.params.athleteId,
       },
       { $set: { note, priority, list } },
       { new: true }
@@ -131,7 +132,7 @@ router.delete("/:athleteId", protect, restrictTo("recruiter"), async (req, res) 
   try {
     const entry = await Shortlist.findOneAndDelete({
       recruiter: req.user._id,
-      athlete:   req.params.athleteId,
+      athlete: req.params.athleteId,
     })
 
     if (!entry) {
