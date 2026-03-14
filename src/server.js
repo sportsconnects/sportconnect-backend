@@ -55,7 +55,6 @@ app.use("/api/offers",     require("./routes/offers"))
 app.use("/api/posts",      require("./routes/posts"))
 app.use("/api/follows",    require("./routes/follows"))
 app.use("/api/ai", require("./routes/ai"))
-app.use("/api/messages", require("./routes/messages"))
 
 // ── Health check 
 app.get("/", (req, res) => {

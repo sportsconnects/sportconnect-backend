@@ -5,39 +5,39 @@ const offerSchema = new mongoose.Schema(
   {
     // Who sent the offer
     recruiter: {
-      type:     mongoose.Schema.Types.ObjectId,
-      ref:      "User",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
 
     // Who received the offer
     athlete: {
-      type:     mongoose.Schema.Types.ObjectId,
-      ref:      "User",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
 
     // Offer details
     type: {
-      type:     String,
-      enum:     ["Full Scholarship", "Partial Scholarship", "Trial Invitation", "Walk-on Offer"],
+      type: String,
+      enum: ["Full Scholarship", "Partial Scholarship", "Trial Invitation", "Walk-on Offer"],
       required: [true, "Offer type is required"],
     },
 
     institution: {
-      type:     String,
+      type: String,
       required: [true, "Institution name is required"],
-      trim:     true,
+      trim: true,
     },
 
     sport: {
-      type:  String,
-      trim:  true,
+      type: String,
+      trim: true,
     },
 
     message: {
-      type:  String,
-      trim:  true,
+      type: String,
+      trim: true,
     },
 
     deadline: {
@@ -46,9 +46,17 @@ const offerSchema = new mongoose.Schema(
 
     // Offer status
     status: {
-      type:    String,
-      enum:    ["pending", "viewed", "accepted", "declined"],
+      type: String,
+      enum: ["pending", "viewed", "accepted", "declined"],
       default: "pending",
+    },
+
+    respondedAt: {
+      type: Date,
+    },
+    responseMessage: {
+      type: String,
+      trim: true,
     },
 
     // When athlete responded
@@ -58,8 +66,8 @@ const offerSchema = new mongoose.Schema(
 
     // Athlete's response message
     responseMessage: {
-      type:  String,
-      trim:  true,
+      type: String,
+      trim: true,
     },
   },
   { timestamps: true }

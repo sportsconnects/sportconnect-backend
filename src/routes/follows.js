@@ -168,4 +168,30 @@ router.get("/followers", protect, async (req, res) => {
   }
 })
 
+// GET /api/follows/following/:userId — get following list for any user
+router.get("/following/:userId", protect, async (req, res) => {
+  try {
+    const docs = await Follow.find({ follower: req.params.userId })
+      .populate("following", "firstName lastName role")
+      .sort({ createdAt: -1 })
+
+    res.json({ count: docs.length, following: docs })
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message })
+  }
+})
+
+// GET /api/follows/followers/:userId — get followers list for any user
+router.get("/followers/:userId", protect, async (req, res) => {
+  try {
+    const docs = await Follow.find({ following: req.params.userId })
+      .populate("follower", "firstName lastName role")
+      .sort({ createdAt: -1 })
+
+    res.json({ count: docs.length, followers: docs })
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message })
+  }
+})
+
 module.exports = router

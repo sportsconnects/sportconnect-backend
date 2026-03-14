@@ -28,22 +28,25 @@ router.post("/profile", protect, restrictTo("recruiter"), async (req, res) => {
   }
 })
 
-// ── GET /api/recruiters/:id 
-// Public — view a single recruiter profile
+// Replace the GET /:id handler:
 router.get("/:id", async (req, res) => {
   try {
-    const profile = await RecruiterProfile.findOne({ user: req.params.id })
+    const User = require("../models/User")
+    const user = await User.findById(req.params.id).select("-password")
+    if (!user) return res.status(404).json({ message: "User not found" })
+
+    let profile = await RecruiterProfile.findOne({ user: req.params.id })
       .populate("user", "firstName lastName email phone")
 
     if (!profile) {
-      return res.status(404).json({ message: "Recruiter profile not found" })
+      profile = await RecruiterProfile.create({ user: req.params.id })
+    } else {
+
+      profile.profileViews += 1
+      await profile.save()
     }
 
-    // Increment profile views
-    profile.profileViews += 1
-    await profile.save()
-
-    res.json({ profile })
+    res.json({ user, profile })
 
   } catch (error) {
     console.error(error)

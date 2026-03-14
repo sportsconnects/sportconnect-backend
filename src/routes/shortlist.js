@@ -1,4 +1,4 @@
-// src/routes/shortlists.js
+// src/routes/shortlist.js
 const router         = require("express").Router()
 const Shortlist      = require("../models/ShortList")
 const AthleteProfile = require("../models/AthleteProfileTemp")
@@ -9,10 +9,6 @@ const { protect, restrictTo } = require("../middleware/auth")
 router.get("/", protect, restrictTo("recruiter"), async (req, res) => {
   try {
     const shortlist = await Shortlist.find({ recruiter: req.user._id })
-      .populate({
-        path:     "athlete",
-        select:   "firstName lastName email",
-      })
       .populate({
         path:     "athlete",
         select:   "firstName lastName email",
@@ -58,9 +54,10 @@ router.get("/", protect, restrictTo("recruiter"), async (req, res) => {
 
 // ── POST /api/shortlists ──────────────────────────────────────
 // Protected — recruiter adds an athlete to their shortlist
-router.post("/", protect, restrictTo("recruiter"), async (req, res) => {
+router.post("/:athleteId", protect, restrictTo("recruiter"), async (req, res) => {
   try {
-    const { athleteId, note, list } = req.body
+    const { athleteId } = req.params
+    const {note, list} = req.body
 
     if (!athleteId) {
       return res.status(400).json({ message: "Athlete ID is required" })
