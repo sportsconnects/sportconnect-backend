@@ -227,4 +227,62 @@ router.get("/unread", async (req, res) => {
   }
 })
 
+// DELETE /api/messages/conversations/:id
+router.delete("/conversations/:id", async (req, res) => {
+  try {
+    const userId = req.user._id
+
+    const conversation = await Conversation.findOne({
+      _id:          req.params.id,
+      participants: userId,
+    })
+
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation not found" })
+    }
+
+    conversation.participants = conversation.participants.filter(
+      p => p.toString() !== userId.toString()
+    )
+
+    if (conversation.participants.length === 0) {
+      await Message.deleteMany({ conversation: conversation._id })
+      await conversation.deleteOne()
+    } else {
+      await conversation.save()
+    }
+
+    res.json({ message: "Conversation removed" })
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Server error", error: err.message })
+  }
+})
+
+// PATCH /api/messages/conversations/:id/unread
+router.patch("/conversations/:id/unread", async (req, res) => {
+  try {
+    const userId = req.user._id
+
+    const conversation = await Conversation.findOne({
+      _id:          req.params.id,
+      participants: userId,
+    })
+
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation not found" })
+    }
+
+    conversation.unreadCount.set(userId.toString(), 1)
+    await conversation.save()
+
+    res.json({ message: "Marked as unread" })
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Server error", error: err.message })
+  }
+})
+
 module.exports = router
