@@ -3,16 +3,28 @@ const express   = require("express")
 const cors      = require("cors")
 const dotenv    = require("dotenv")
 const connectDB = require("./config/db")
+const http      = require("http")
+const { Server } = require("socket.io")
 
-// Load .env variables first
+
 dotenv.config()
-
-// Connect to database
 connectDB()
 
 const app = express()
+const server = http.createServer(app) 
 
-// ── Middleware ──────────────────────────────────────────────
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://sportsconnectz.netlify.app"
+    ],
+    credentials: true,
+  }
+})
+
+// ── Middleware 
 app.use(cors({
  origin: [
     "http://localhost:5173",
@@ -45,6 +57,8 @@ app.use((req, res, next) => {
 const rateLimit = require("express-rate-limit")
 app.use("/api/auth", rateLimit({ windowMs: 15*60*1000, max: 20 }))
 
+app.set("io", io)
+
 // ── Routes
 app.use("/api/auth",       require("./routes/auth"))
 app.use("/api/athletes",   require("./routes/athletes"))
@@ -71,6 +85,11 @@ app.use((err, req, res, next) => {
   console.error(err.stack)
   res.status(500).json({ message: "Something went wrong", error: err.message })
 })
+
+
+// ── Socket.io
+require("./socket")(io)
+
 
 // ── Start server 
 const PORT = process.env.PORT || 5000
