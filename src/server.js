@@ -1,9 +1,9 @@
 // src/server.js
-const express   = require("express")
-const cors      = require("cors")
-const dotenv    = require("dotenv")
+const express = require("express")
+const cors = require("cors")
+const dotenv = require("dotenv")
 const connectDB = require("./config/db")
-const http      = require("http")
+const http = require("http")
 const { Server } = require("socket.io")
 
 
@@ -11,7 +11,7 @@ dotenv.config()
 connectDB()
 
 const app = express()
-const server = http.createServer(app) 
+const server = http.createServer(app)
 
 const io = new Server(server, {
   cors: {
@@ -21,22 +21,25 @@ const io = new Server(server, {
       "https://sportsconnectz.netlify.app"
     ],
     credentials: true,
-  }
+  },
+  pingTimeout: 80000,  
+  pingInterval: 25000,
+  transports: ["websocket", "polling"],
 })
 
 // ── Middleware 
 app.use(cors({
- origin: [
+  origin: [
     "http://localhost:5173",
-    "http://localhost:5174",                   
-    "https://sportsconnectz.netlify.app"        
+    "http://localhost:5174",
+    "https://sportsconnectz.netlify.app"
   ],
   credentials: true
 }))
 app.use(express.json())
 
 
-app.use(require("helmet")()) 
+app.use(require("helmet")())
 
 app.use((req, res, next) => {
   const sanitize = (obj) => {
@@ -55,19 +58,19 @@ app.use((req, res, next) => {
 })
 
 const rateLimit = require("express-rate-limit")
-app.use("/api/auth", rateLimit({ windowMs: 15*60*1000, max: 20 }))
+app.use("/api/auth", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }))
 
 app.set("io", io)
 
 // ── Routes
-app.use("/api/auth",       require("./routes/auth"))
-app.use("/api/athletes",   require("./routes/athletes"))
+app.use("/api/auth", require("./routes/auth"))
+app.use("/api/athletes", require("./routes/athletes"))
 app.use("/api/recruiters", require("./routes/recruiters"))
 app.use("/api/shortlists", require("./routes/shortlist"))
-app.use("/api/messages",   require("./routes/messages"))
-app.use("/api/offers",     require("./routes/offers"))
-app.use("/api/posts",      require("./routes/posts"))
-app.use("/api/follows",    require("./routes/follows"))
+app.use("/api/messages", require("./routes/messages"))
+app.use("/api/offers", require("./routes/offers"))
+app.use("/api/posts", require("./routes/posts"))
+app.use("/api/follows", require("./routes/follows"))
 app.use("/api/ai", require("./routes/ai"))
 
 // ── Health check 
@@ -90,6 +93,15 @@ app.use((err, req, res, next) => {
 // ── Socket.io
 require("./socket")(io)
 
+
+if (process.env.NODE_ENV === "production" && process.env.RENDER_EXTERNAL_URL) {
+  const https = require("https")
+  setInterval(() => {
+    https.get(process.env.RENDER_EXTERNAL_URL, (res) => {
+      console.log("Keep-alive ping:", res.statusCode)
+    }).on("error", () => {})
+  }, 14 * 60 * 1000)
+}
 
 // ── Start server 
 const PORT = process.env.PORT || 5000
