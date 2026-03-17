@@ -36,6 +36,7 @@ app.use(cors({
   ],
   credentials: true
 }))
+
 app.use(express.json())
 
 
@@ -72,6 +73,7 @@ app.use("/api/offers", require("./routes/offers"))
 app.use("/api/posts", require("./routes/posts"))
 app.use("/api/follows", require("./routes/follows"))
 app.use("/api/ai", require("./routes/ai"))
+app.use("/api/notifications", require("./routes/notifications"))
 
 // ── Health check 
 app.get("/", (req, res) => {

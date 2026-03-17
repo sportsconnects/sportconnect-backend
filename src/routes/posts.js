@@ -1,11 +1,12 @@
 // src/routes/posts.js
-const router         = require("express").Router()
-const Post           = require("../models/Post")
-const AthleteProfile  = require("../models/AthleteProfileTemp")
+const router = require("express").Router()
+const Post = require("../models/Post")
+const AthleteProfile = require("../models/AthleteProfileTemp")
 const RecruiterProfile = require("../models/RecruiterProfile")
-const Follow         = require("../models/Follow")
-const User           = require("../models/User")
-const { protect }    = require("../middleware/auth")
+const Follow = require("../models/Follow")
+const User = require("../models/User")
+const { protect } = require("../middleware/auth")
+const notify = require("../utils/notify")
 
 // ── Helper: enrich a post with author profile data
 async function enrichPost(post, currentUserId) {
@@ -17,48 +18,49 @@ async function enrichPost(post, currentUserId) {
     const profile = await AthleteProfile.findOne({ user: post.author._id })
       .select("sport position school region classOf verified avatar")
     authorExtra = {
-      sport:    profile?.sport    || "—",
+      sport: profile?.sport || "—",
       position: profile?.position || "—",
-      school:   profile?.school   || "—",
-      region:   profile?.region   || "—",
-      classOf:  profile?.classOf  || "—",
+      school: profile?.school || "—",
+      region: profile?.region || "—",
+      classOf: profile?.classOf || "—",
       verified: profile?.verified || false,
-      avatar:   profile?.avatar   || null,
+      avatar: profile?.avatar || null,
     }
   } else if (authorRole === "recruiter") {
     const profile = await RecruiterProfile.findOne({ user: post.author._id })
       .select("organization role verified avatar")
     authorExtra = {
-      sport:        "Recruiter",
-      position:     profile?.role         || "Scout",
-      school:       profile?.organization || "—",
-      region:       "—",
-      classOf:      "—",
-      verified:     profile?.verified     || false,
-      avatar:       profile?.avatar       || null,
+      sport: "Recruiter",
+      position: profile?.role || "Scout",
+      school: profile?.organization || "—",
+      region: "—",
+      classOf: "—",
+      verified: profile?.verified || false,
+      avatar: profile?.avatar || null,
       organization: profile?.organization || "—",
     }
   }
 
   return {
-    _id:           post._id,
-    caption:       post.caption,
-    videoId:       post.videoId,
-    videoTitle:    post.videoTitle,
-    sport:         post.sport,
-    views:         post.views || 0,
-    likes:         post.likes.length,
-    liked:         post.likes.map(id => id.toString()).includes(currentUserId.toString()),
+    _id: post._id,
+    caption: post.caption,
+    videoId: post.videoId,
+    videoTitle: post.videoTitle,
+    sport: post.sport,
+    views: post.views || 0,
+    likes: post.likes.length,
+    liked: post.likes.map(id => id.toString()).includes(currentUserId.toString()),
     commentsCount: post.comments.length,
-    comments:      post.comments.slice(0, 3),
-    shares:        post.shares || 0,
-    sharedFrom:    post.sharedFrom || null,
-    createdAt:     post.createdAt,
+    comments: post.comments.slice(0, 3),
+    shares: post.shares || 0,
+    sharedFrom: post.sharedFrom || null,
+    lookingFor: post.lookingFor || null,
+    createdAt: post.createdAt,
     author: {
-      id:        post.author._id,
+      id: post.author._id,
       firstName: post.author.firstName,
-      lastName:  post.author.lastName,
-      role:      post.author.role,
+      lastName: post.author.lastName,
+      role: post.author.role,
       ...authorExtra,
     }
   }
@@ -100,7 +102,7 @@ router.get("/feed", protect, async (req, res) => {
     )
 
     res.json({
-      page:  Number(page),
+      page: Number(page),
       count: enriched.length,
       posts: enriched,
     })
@@ -170,11 +172,11 @@ router.post("/", protect, async (req, res) => {
     }
 
     const post = await Post.create({
-      author:     req.user._id,
-      caption:    caption?.trim() || "",
-      videoId:    videoId    || null,
+      author: req.user._id,
+      caption: caption?.trim() || "",
+      videoId: videoId || null,
       videoTitle: videoTitle || null,
-      sport:      sport      || null,
+      sport: sport || null,
       lookingFor: lookingFor || null, // recruiters can tag what position they're looking for
     })
 
@@ -184,7 +186,7 @@ router.post("/", protect, async (req, res) => {
 
     res.status(201).json({
       message: "Post created successfully",
-      post:    enriched,
+      post: enriched,
     })
 
   } catch (error) {
@@ -208,6 +210,16 @@ router.patch("/:id/like", protect, async (req, res) => {
       post.likes = post.likes.filter(id => id.toString() !== req.user._id.toString())
     } else {
       post.likes.push(req.user._id)
+      const io = req.app.get("io")
+      await notify({
+        recipient: post.author,
+        sender: req.user._id,
+        type: "post_liked",
+        message: `${req.user.firstName} ${req.user.lastName} liked your post`,
+        refId: post._id,
+        refModel: "Post",
+        io,
+      })
     }
 
     await post.save()
@@ -236,11 +248,22 @@ router.post("/:id/comment", protect, async (req, res) => {
     await post.save()
     await post.populate("comments.user", "firstName lastName role")
 
+    const io = req.app.get("io")
+    await notify({
+      recipient: post.author,
+      sender: req.user._id,
+      type: "post_commented",
+      message: `${req.user.firstName} ${req.user.lastName} commented on your post`,
+      refId: post._id,
+      refModel: "Post",
+      io,
+    })
+
     const newComment = post.comments[post.comments.length - 1]
 
     res.status(201).json({
-      message:       "Comment added",
-      comment:       newComment,
+      message: "Comment added",
+      comment: newComment,
       commentsCount: post.comments.length,
     })
 
@@ -267,17 +290,28 @@ router.post("/:id/share", protect, async (req, res) => {
     originalPost.shares = (originalPost.shares || 0) + 1
     await originalPost.save()
 
+    const io = req.app.get("io")
+    await notify({
+      recipient: originalPost.author._id,
+      sender: req.user._id,
+      type: "post_shared",
+      message: `${req.user.firstName} ${req.user.lastName} shared your post`,
+      refId: originalPost._id,
+      refModel: "Post",
+      io,
+    })
+
     // Create a new shared post
     const sharedPost = await Post.create({
-      author:     req.user._id,
-      caption:    caption?.trim() || "",
-      videoId:    originalPost.videoId    || null,
+      author: req.user._id,
+      caption: caption?.trim() || "",
+      videoId: originalPost.videoId || null,
       videoTitle: originalPost.videoTitle || null,
-      sport:      originalPost.sport      || null,
+      sport: originalPost.sport || null,
       sharedFrom: {
-        postId:        originalPost._id,
-        authorName:    `${originalPost.author.firstName} ${originalPost.author.lastName}`,
-        authorRole:    originalPost.author.role,
+        postId: originalPost._id,
+        authorName: `${originalPost.author.firstName} ${originalPost.author.lastName}`,
+        authorRole: originalPost.author.role,
         originalCaption: originalPost.caption,
       },
     })
@@ -287,7 +321,7 @@ router.post("/:id/share", protect, async (req, res) => {
 
     res.status(201).json({
       message: "Post shared successfully",
-      post:    enriched,
+      post: enriched,
       originalShares: originalPost.shares,
     })
 

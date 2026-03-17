@@ -2,6 +2,15 @@
 const router = require("express").Router()
 const jwt    = require("jsonwebtoken")
 const User   = require("../models/User")
+const AthleteProfile   = require("../models/AthleteProfileTemp")
+const RecruiterProfile = require("../models/RecruiterProfile")
+const Post             = require("../models/Post")
+const Follow           = require("../models/Follow")
+const Conversation     = require("../models/Conversation")
+const Message          = require("../models/Message")
+const Shortlist        = require("../models/ShortList")
+const Offer            = require("../models/Offer")
+const Notification     = require("../models/Notification")
 
 // generate token
 const generateToken = (userId, role) => {
@@ -180,6 +189,42 @@ router.get("/me", protect, async (req, res) => {
       role:      req.user.role,
     }
   })
+})
+
+// DELETE /api/auth/account — permanently delete account
+router.delete("/account", protect, async (req, res) => {
+  try {
+    const userId = req.user._id
+
+    await Promise.all([
+      AthleteProfile.deleteMany({ user: userId }),
+      RecruiterProfile.deleteMany({ user: userId }),
+      Post.deleteMany({ author: userId }),
+      Follow.deleteMany({ $or: [{ follower: userId }, { following: userId }] }),
+      Shortlist.deleteMany({ $or: [{ recruiter: userId }, { athlete: userId }] }),
+      Offer.deleteMany({ $or: [{ recruiter: userId }, { athlete: userId }] }),
+      Notification.deleteMany({ $or: [{ recipient: userId }, { sender: userId }] }),
+    ])
+
+    // Handle conversations
+    const convos = await Conversation.find({ participants: userId })
+    for (const convo of convos) {
+      convo.participants = convo.participants.filter(p => p.toString() !== userId.toString())
+      if (convo.participants.length === 0) {
+        await Message.deleteMany({ conversation: convo._id })
+        await convo.deleteOne()
+      } else {
+        await convo.save()
+      }
+    }
+
+    await User.findByIdAndDelete(userId)
+    res.json({ message: "Account deleted successfully" })
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Server error", error: error.message })
+  }
 })
 
 module.exports = router
