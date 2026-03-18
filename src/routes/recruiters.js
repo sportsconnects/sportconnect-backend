@@ -1,6 +1,7 @@
 // src/routes/recruiters.js
 const router           = require("express").Router()
 const RecruiterProfile = require("../models/RecruiterProfile")
+const User = require("../models/User")
 const { protect, restrictTo } = require("../middleware/auth")
 
 // ── POST /api/recruiters/profile ──────────────────────────────
@@ -76,6 +77,82 @@ router.put("/profile", protect, restrictTo("recruiter"), async (req, res) => {
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: "Server error", error: error.message })
+  }
+})
+
+
+// GET /api/recruiters — browse/search all recruiters
+// Public — athletes use this to find and message recruiters
+router.get("/", protect, async (req, res) => {
+  try {
+    const { search, sport, page = 1, limit = 20 } = req.query
+    const skip = (page - 1) * limit
+
+    // Find all recruiter users
+    let userFilter = { role: "recruiter" }
+
+    // If searching by name, find matching users first
+    if (search) {
+      const searchRegex = new RegExp(search, "i")
+      const matchingUsers = await User.find({
+        role: "recruiter",
+        $or: [
+          { firstName: searchRegex },
+          { lastName:  searchRegex },
+        ]
+      }).select("_id")
+      userFilter._id = { $in: matchingUsers.map(u => u._id) }
+    }
+
+    // Find recruiter profiles
+    let profileFilter = {}
+    if (sport) profileFilter.sport = { $in: [sport] }
+
+    // If searching by organization/school
+    if (search) {
+      const searchRegex = new RegExp(search, "i")
+      const byOrg = await RecruiterProfile.find({
+        organization: searchRegex
+      }).select("user")
+      const orgUserIds = byOrg.map(p => p.user.toString())
+
+      // Merge with name matches
+      if (userFilter._id) {
+        const nameIds = userFilter._id.$in.map(id => id.toString())
+        const allIds  = [...new Set([...nameIds, ...orgUserIds])]
+        profileFilter.user = { $in: allIds }
+      } else if (orgUserIds.length > 0) {
+        profileFilter.user = { $in: orgUserIds }
+      }
+    }
+
+    const profiles = await RecruiterProfile.find(profileFilter)
+      .populate("user", "firstName lastName email role")
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 })
+
+    // Filter out profiles where user doesn't match role filter
+    const results = profiles
+      .filter(p => p.user?.role === "recruiter")
+      .map(p => ({
+        id:           p.user._id,
+        firstName:    p.user.firstName,
+        lastName:     p.user.lastName,
+        organization: p.organization || "—",
+        role:         p.role         || "Recruiter",
+        location:     p.location     || "—",
+        sports:       p.sports       || [],
+        experience:   p.experience   || "—",
+        verified:     p.verified     || false,
+        bio:          p.bio          || null,
+      }))
+
+    res.json({ count: results.length, recruiters: results })
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Server error", error: err.message })
   }
 })
 
