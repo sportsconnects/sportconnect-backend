@@ -22,9 +22,10 @@ const io = new Server(server, {
     ],
     credentials: true,
   },
-  pingTimeout: 80000,  
+  pingTimeout:  60000,
   pingInterval: 25000,
-  transports: ["websocket", "polling"],
+  transports:   ["polling", "websocket"], 
+  allowUpgrades: true,
 })
 
 // ── Middleware 
@@ -89,6 +90,11 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack)
   res.status(500).json({ message: "Something went wrong", error: err.message })
+})
+
+app.use((req, res, next) => {
+  res.setHeader("X-Accel-Buffering", "no")
+  next()
 })
 
 
