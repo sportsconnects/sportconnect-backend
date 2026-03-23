@@ -2,3 +2,6 @@
 # Ignore 
 node_modules
 .env
+
+#Ignore lock files
+package-lock.json
