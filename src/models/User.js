@@ -59,8 +59,7 @@ const userSchema = new mongoose.Schema(
   }
 )
 
-// ── Hash password before saving ──────────────────────────────
-// This runs automatically every time a user is saved
+// ── Hash password before saving 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next()
 
