@@ -63,9 +63,10 @@ router.post("/register/athlete", async (req, res) => {
     user.verificationExpires = verifyExpires
     await user.save()
 
-    sendVerificationEmail(user.email, user.firstName, verifyToken).catch(err =>
+    sendVerificationEmail(user.email, user.firstName, verifyToken).catch(err => {
       console.error("Verification email failed:", err.message)
-    )
+      console.error("Full error:", err)
+    })
 
     res.status(201).json({
       message: "Account created! Please check your email to verify your account.",
@@ -120,10 +121,10 @@ router.post("/register/recruiter", async (req, res) => {
     })
 
     // 5. Return token + user info
-    const verifyToken   = crypto.randomBytes(32).toString("hex")
+    const verifyToken = crypto.randomBytes(32).toString("hex")
     const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-    user.verificationToken   = verifyToken
+    user.verificationToken = verifyToken
     user.verificationExpires = verifyExpires
     await user.save()
 
@@ -132,15 +133,15 @@ router.post("/register/recruiter", async (req, res) => {
     )
 
     res.status(201).json({
-      message:   "Account created! Please check your email to verify your account.",
+      message: "Account created! Please check your email to verify your account.",
       emailSent: true,
       user: {
-        id:            user._id,
-        firstName:     user.firstName,
-        lastName:      user.lastName,
-        email:         user.email,
-        role:          user.role,
-        organization:  user.organization,
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        organization: user.organization,
         emailVerified: false,
       },
     })
@@ -182,9 +183,9 @@ router.post("/login", async (req, res) => {
 
     if (!user.emailVerified) {
       return res.status(403).json({
-        message:          "Please verify your email before signing in. Check your inbox.",
+        message: "Please verify your email before signing in. Check your inbox.",
         emailNotVerified: true,
-        email:            user.email,
+        email: user.email,
       })
     }
 
@@ -268,7 +269,7 @@ router.get("/verify-email", async (req, res) => {
     if (!token) return res.status(400).json({ message: "Token is required" })
 
     const user = await User.findOne({
-      verificationToken:   token,
+      verificationToken: token,
       verificationExpires: { $gt: new Date() },
     })
 
@@ -279,20 +280,20 @@ router.get("/verify-email", async (req, res) => {
       })
     }
 
-    user.emailVerified       = true
-    user.verificationToken   = null
+    user.emailVerified = true
+    user.verificationToken = null
     user.verificationExpires = null
     await user.save()
 
     res.json({
       message: "Email verified successfully! Welcome to SportsConnect.",
-      token:   generateToken(user._id, user.role),
+      token: generateToken(user._id, user.role),
       user: {
-        id:            user._id,
-        firstName:     user.firstName,
-        lastName:      user.lastName,
-        email:         user.email,
-        role:          user.role,
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
         emailVerified: true,
       },
     })
@@ -309,13 +310,13 @@ router.post("/resend-verification", async (req, res) => {
     if (!email) return res.status(400).json({ message: "Email is required" })
 
     const user = await User.findOne({ email })
-    if (!user)            return res.status(404).json({ message: "No account found with this email" })
+    if (!user) return res.status(404).json({ message: "No account found with this email" })
     if (user.emailVerified) return res.status(400).json({ message: "This email is already verified" })
 
-    const verifyToken   = crypto.randomBytes(32).toString("hex")
+    const verifyToken = crypto.randomBytes(32).toString("hex")
     const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-    user.verificationToken   = verifyToken
+    user.verificationToken = verifyToken
     user.verificationExpires = verifyExpires
     await user.save()
 

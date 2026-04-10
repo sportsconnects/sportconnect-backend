@@ -1,12 +1,19 @@
-const { Resend } = require("resend")
-const resend = new Resend(process.env.RESEND_API_KEY)
+const nodemailer = require("nodemailer")
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,    
+    pass: process.env.EMAIL_PASS,     
+  },
+})
 
 async function sendVerificationEmail(toEmail, firstName, token) {
   const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
 
-  await resend.emails.send({
-    from:    "SportsConnect <onboarding@resend.dev>",
-    to:      toEmail,
+  await transporter.sendMail({
+    from: `"SportsConnect" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
     subject: "Verify your SportsConnect account",
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#F0F4FA;">
@@ -32,7 +39,7 @@ async function sendVerificationEmail(toEmail, firstName, token) {
           This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
         </p>
       </div>
-    `
+    `,
   })
 }
 
