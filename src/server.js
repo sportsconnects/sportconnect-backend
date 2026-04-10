@@ -40,6 +40,13 @@ app.use(cors({
 
 app.use(express.json())
 
+app.use((req, res, next) => {
+  res.setHeader("X-Accel-Buffering", "no")
+  next()
+})
+
+app.use(require("helmet")())
+
 
 app.use(require("helmet")())
 
@@ -90,11 +97,6 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack)
   res.status(500).json({ message: "Something went wrong", error: err.message })
-})
-
-app.use((req, res, next) => {
-  res.setHeader("X-Accel-Buffering", "no")
-  next()
 })
 
 
