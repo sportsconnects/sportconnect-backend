@@ -63,7 +63,7 @@ router.post("/register/athlete", async (req, res) => {
     user.verificationExpires = verifyExpires
     await user.save()
 
-    sendVerificationEmail(user.email, user.firstName, verifyToken).catch(err => {
+    sendVerificationEmail(user.email, user.firstName, verifyToken, "athlete").catch(err => {
       console.error("Verification email failed:", err.message)
       console.error("Full error:", err)
     })
@@ -128,7 +128,7 @@ router.post("/register/recruiter", async (req, res) => {
     user.verificationExpires = verifyExpires
     await user.save()
 
-    sendVerificationEmail(user.email, user.firstName, verifyToken).catch(err =>
+    sendVerificationEmail(user.email, user.firstName, verifyToken, "recruiter").catch(err =>
       console.error("Verification email failed:", err.message)
     )
 
@@ -320,7 +320,7 @@ router.post("/resend-verification", async (req, res) => {
     user.verificationExpires = verifyExpires
     await user.save()
 
-    await sendVerificationEmail(user.email, user.firstName, verifyToken)
+ await sendVerificationEmail(user.email, user.firstName, verifyToken, user.role)
 
     res.json({ message: "Verification email resent. Please check your inbox." })
   } catch (error) {
