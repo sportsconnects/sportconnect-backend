@@ -47,9 +47,6 @@ app.use((req, res, next) => {
 
 app.use(require("helmet")())
 
-
-app.use(require("helmet")())
-
 app.use((req, res, next) => {
   const sanitize = (obj) => {
     if (!obj || typeof obj !== "object") return

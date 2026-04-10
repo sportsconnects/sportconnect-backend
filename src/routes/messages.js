@@ -4,12 +4,10 @@ const Message = require("../models/Message")
 const User = require("../models/User")
 const { protect } = require("../middleware/auth")
 
-// ── All routes require authentication
-router.use(protect)
 
 
 // POST /api/messages/conversations─
-router.post("/conversations", async (req, res) => {
+router.post("/conversations",protect, async (req, res) => {
   try {
     const { recipientId } = req.body
     const senderId = req.user._id
@@ -57,7 +55,7 @@ router.post("/conversations", async (req, res) => {
 
 
 // GET /api/messages/conversations
-router.get("/conversations", async (req, res) => {
+router.get("/conversations",protect, async (req, res) => {
   try {
     const userId = req.user._id
 
@@ -98,7 +96,7 @@ router.get("/conversations", async (req, res) => {
 
 
 // GET /api/messages/conversations/:id/messages
-router.get("/conversations/:id/messages", async (req, res) => {
+router.get("/conversations/:id/messages",protect, async (req, res) => {
   try {
     const userId = req.user._id
     const conversationId = req.params.id
@@ -142,7 +140,7 @@ router.get("/conversations/:id/messages", async (req, res) => {
 
 
 // POST /api/messages/conversations/:id/messages
-router.post("/conversations/:id/messages", async (req, res) => {
+router.post("/conversations/:id/messages",protect, async (req, res) => {
   try {
     const userId = req.user._id
     const conversationId = req.params.id
@@ -218,7 +216,7 @@ router.post("/conversations/:id/messages", async (req, res) => {
 
 
 // GET /api/messages/conversations/unread
-router.get("/unread", async (req, res) => {
+router.get("/unread",protect, async (req, res) => {
   try {
     const userId = req.user._id
 
@@ -237,7 +235,7 @@ router.get("/unread", async (req, res) => {
 })
 
 // DELETE /api/messages/conversations/:id
-router.delete("/conversations/:id", async (req, res) => {
+router.delete("/conversations/:id",protect, async (req, res) => {
   try {
     const userId = req.user._id
 
@@ -270,7 +268,7 @@ router.delete("/conversations/:id", async (req, res) => {
 })
 
 // PATCH /api/messages/conversations/:id/unread
-router.patch("/conversations/:id/unread", async (req, res) => {
+router.patch("/conversations/:id/unread",protect, async (req, res) => {
   try {
     const userId = req.user._id
 
