@@ -1,38 +1,38 @@
 const mongoose = require("mongoose")
-const bcrypt   = require("bcryptjs")
+const bcrypt = require("bcryptjs")
 
 const userSchema = new mongoose.Schema(
   {
     firstName: {
-      type:     String,
+      type: String,
       required: [true, "First name is required"],
-      trim:     true,
+      trim: true,
     },
     lastName: {
-      type:     String,
+      type: String,
       required: [true, "Last name is required"],
-      trim:     true,
+      trim: true,
     },
     email: {
-      type:      String,
-      required:  [true, "Email is required"],
-      unique:    true,
+      type: String,
+      required: [true, "Email is required"],
+      unique: true,
       lowercase: true,
-      trim:      true,
-      match:     [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
     },
     password: {
-      type:      String,
-      required:  [true, "Password is required"],
+      type: String,
+      required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters"],
     },
     phone: {
-      type:  String,
-      trim:  true,
+      type: String,
+      trim: true,
     },
     role: {
-      type:    String,
-      enum:    ["athlete", "recruiter"],
+      type: String,
+      enum: ["athlete", "recruiter"],
       required: true,
     },
 
@@ -43,13 +43,16 @@ const userSchema = new mongoose.Schema(
 
     // Recruiter-specific fields
     organization: {
-      type:  String,
-      trim:  true,
+      type: String,
+      trim: true,
     },
     recruiterPosition: {
-      type:  String,
-      trim:  true,
+      type: String,
+      trim: true,
     },
+    emailVerified: { type: Boolean, default: false },
+    verificationToken: { type: String, default: null },
+    verificationExpires: { type: Date, default: null },
   },
   {
     timestamps: true,
@@ -61,7 +64,7 @@ const userSchema = new mongoose.Schema(
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next()
 
-  const salt    = await bcrypt.genSalt(10)
+  const salt = await bcrypt.genSalt(10)
   this.password = await bcrypt.hash(this.password, salt)
 })
 

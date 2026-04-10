@@ -1,16 +1,18 @@
 // src/routes/auth.js
 const router = require("express").Router()
-const jwt    = require("jsonwebtoken")
-const User   = require("../models/User")
-const AthleteProfile   = require("../models/AthleteProfileTemp")
+const jwt = require("jsonwebtoken")
+const User = require("../models/User")
+const AthleteProfile = require("../models/AthleteProfileTemp")
 const RecruiterProfile = require("../models/RecruiterProfile")
-const Post             = require("../models/Post")
-const Follow           = require("../models/Follow")
-const Conversation     = require("../models/Conversation")
-const Message          = require("../models/Message")
-const Shortlist        = require("../models/ShortList")
-const Offer            = require("../models/Offer")
-const Notification     = require("../models/Notification")
+const Post = require("../models/Post")
+const Follow = require("../models/Follow")
+const Conversation = require("../models/Conversation")
+const Message = require("../models/Message")
+const Shortlist = require("../models/ShortList")
+const Offer = require("../models/Offer")
+const Notification = require("../models/Notification")
+const crypto = require("crypto")
+const sendVerificationEmail = require("../utils/sendEmail")
 
 // generate token
 const generateToken = (userId, role) => {
@@ -54,15 +56,27 @@ router.post("/register/athlete", async (req, res) => {
     })
 
     // 5. Return token + user info (never return the password)
+    const verifyToken = crypto.randomBytes(32).toString("hex")
+    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
+
+    user.verificationToken = verifyToken
+    user.verificationExpires = verifyExpires
+    await user.save()
+
+    sendVerificationEmail(user.email, user.firstName, verifyToken).catch(err =>
+      console.error("Verification email failed:", err.message)
+    )
+
     res.status(201).json({
-      message: "Athlete account created successfully",
-      token: generateToken(user._id, user.role),
+      message: "Account created! Please check your email to verify your account.",
+      emailSent: true,
       user: {
-        id:        user._id,
+        id: user._id,
         firstName: user.firstName,
-        lastName:  user.lastName,
-        email:     user.email,
-        role:      user.role,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        emailVerified: false,
       },
     })
 
@@ -106,16 +120,28 @@ router.post("/register/recruiter", async (req, res) => {
     })
 
     // 5. Return token + user info
+    const verifyToken   = crypto.randomBytes(32).toString("hex")
+    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+    user.verificationToken   = verifyToken
+    user.verificationExpires = verifyExpires
+    await user.save()
+
+    sendVerificationEmail(user.email, user.firstName, verifyToken).catch(err =>
+      console.error("Verification email failed:", err.message)
+    )
+
     res.status(201).json({
-      message: "Recruiter account created successfully",
-      token: generateToken(user._id, user.role),
+      message:   "Account created! Please check your email to verify your account.",
+      emailSent: true,
       user: {
-        id:           user._id,
-        firstName:    user.firstName,
-        lastName:     user.lastName,
-        email:        user.email,
-        role:         user.role,
-        organization: user.organization,
+        id:            user._id,
+        firstName:     user.firstName,
+        lastName:      user.lastName,
+        email:         user.email,
+        role:          user.role,
+        organization:  user.organization,
+        emailVerified: false,
       },
     })
 
@@ -143,8 +169,8 @@ router.post("/login", async (req, res) => {
 
     // 3. Check role matches — prevents athlete logging in as recruiter and vice versa
     if (role && user.role !== role) {
-      return res.status(401).json({ 
-        message: `No ${role} account found with this email` 
+      return res.status(401).json({
+        message: `No ${role} account found with this email`
       })
     }
 
@@ -154,16 +180,24 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" })
     }
 
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        message:          "Please verify your email before signing in. Check your inbox.",
+        emailNotVerified: true,
+        email:            user.email,
+      })
+    }
+
     // 5. Return token + user info
     res.json({
       message: "Login successful",
       token: generateToken(user._id, user.role),
       user: {
-        id:           user._id,
-        firstName:    user.firstName,
-        lastName:     user.lastName,
-        email:        user.email,
-        role:         user.role,
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
         organization: user.organization || null,
       },
     })
@@ -182,11 +216,11 @@ router.get("/me", protect, async (req, res) => {
   res.json({
     message: "Token is valid",
     user: {
-      id:        req.user._id,
+      id: req.user._id,
       firstName: req.user.firstName,
-      lastName:  req.user.lastName,
-      email:     req.user.email,
-      role:      req.user.role,
+      lastName: req.user.lastName,
+      email: req.user.email,
+      role: req.user.role,
     }
   })
 })
@@ -221,6 +255,73 @@ router.delete("/account", protect, async (req, res) => {
     await User.findByIdAndDelete(userId)
     res.json({ message: "Account deleted successfully" })
 
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Server error", error: error.message })
+  }
+})
+
+// GET /api/auth/verify-email?token=xxx
+router.get("/verify-email", async (req, res) => {
+  try {
+    const { token } = req.query
+    if (!token) return res.status(400).json({ message: "Token is required" })
+
+    const user = await User.findOne({
+      verificationToken:   token,
+      verificationExpires: { $gt: new Date() },
+    })
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Verification link is invalid or has expired. Please request a new one.",
+        expired: true,
+      })
+    }
+
+    user.emailVerified       = true
+    user.verificationToken   = null
+    user.verificationExpires = null
+    await user.save()
+
+    res.json({
+      message: "Email verified successfully! Welcome to SportsConnect.",
+      token:   generateToken(user._id, user.role),
+      user: {
+        id:            user._id,
+        firstName:     user.firstName,
+        lastName:      user.lastName,
+        email:         user.email,
+        role:          user.role,
+        emailVerified: true,
+      },
+    })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Server error", error: error.message })
+  }
+})
+
+// POST /api/auth/resend-verification
+router.post("/resend-verification", async (req, res) => {
+  try {
+    const { email } = req.body
+    if (!email) return res.status(400).json({ message: "Email is required" })
+
+    const user = await User.findOne({ email })
+    if (!user)            return res.status(404).json({ message: "No account found with this email" })
+    if (user.emailVerified) return res.status(400).json({ message: "This email is already verified" })
+
+    const verifyToken   = crypto.randomBytes(32).toString("hex")
+    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+    user.verificationToken   = verifyToken
+    user.verificationExpires = verifyExpires
+    await user.save()
+
+    await sendVerificationEmail(user.email, user.firstName, verifyToken)
+
+    res.json({ message: "Verification email resent. Please check your inbox." })
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: "Server error", error: error.message })
