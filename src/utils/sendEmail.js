@@ -1,18 +1,25 @@
-const nodemailer = require("nodemailer")
+// const nodemailer = require("nodemailer")
 
 
+
+// async function sendVerificationEmail(toEmail, firstName, token, role = "athlete") {
+//   console.log("Attempting to send verification email to:", toEmail)
+//   const transporter = nodemailer.createTransport({
+//   host: "smtp.gmail.com",
+//   port: 587,
+//   secure: false,
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASS,
+//   },
+// })
+
+
+const { Resend } = require("resend")
 
 async function sendVerificationEmail(toEmail, firstName, token, role = "athlete") {
   console.log("Attempting to send verification email to:", toEmail)
-  const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-})
+  const resend = new Resend(process.env.RESEND_API_KEY)
   const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
 
   const isRecruiter = role === "recruiter"
@@ -23,8 +30,11 @@ async function sendVerificationEmail(toEmail, firstName, token, role = "athlete"
 
   const buttonText = isRecruiter ? "Verify & Access Dashboard" : "Verify My Email"
 
-  await transporter.sendMail({
-    from: `"SportsConnect" <${process.env.EMAIL_USER}>`,
+  // await transporter.sendMail({
+  //   from: `"SportsConnect" <${process.env.EMAIL_USER}>`,
+  //   to: toEmail,
+   await resend.emails.send({
+    from: "SportsConnect <noreply@nexuxgh.com>",
     to: toEmail,
     subject: "Verify your SportsConnect account",
     html: `
