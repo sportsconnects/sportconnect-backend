@@ -5,7 +5,7 @@ const nodemailer = require("nodemailer")
 async function sendVerificationEmail(toEmail, firstName, token, role = "athlete") {
   console.log("Attempting to send verification email to:", toEmail)
   const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
   port: 587,
   secure: false,
   auth: {
