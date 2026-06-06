@@ -1,14 +1,18 @@
-const nodemailer = require("nodemailer")
+// const nodemailer = require("nodemailer")
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-})
+// const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASS,
+//   },
+// })
+
+const { Resend } = require("resend")
 
 async function sendVerificationEmail(toEmail, firstName, token, role = "athlete") {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  console.log("Attempting to send verification email to:", toEmail)
   const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
 
   const isRecruiter = role === "recruiter"
@@ -19,10 +23,10 @@ async function sendVerificationEmail(toEmail, firstName, token, role = "athlete"
 
   const buttonText = isRecruiter ? "Verify & Access Dashboard" : "Verify My Email"
 
-  await transporter.sendMail({
-    from: `"SportsConnect" <${process.env.EMAIL_USER}>`,
-    to: toEmail,
-    subject: "Verify your SportsConnect account",
+  await resend.emails.send({
+  from: "SportsConnect <onboarding@resend.dev>",
+  to: toEmail,
+  subject: "Verify your SportsConnect account",
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#F0F4FA;">
         <div style="background:#07112B;border-radius:16px;padding:32px;text-align:center;margin-bottom:24px;">
