@@ -13,6 +13,7 @@ const Offer = require("../models/Offer")
 const Notification = require("../models/Notification")
 const crypto = require("crypto")
 const sendVerificationEmail = require("../utils/sendEmail")
+const sendPasswordResetEmail = require("../utils/sendPasswordResetEmail")
 
 // generate token
 const generateToken = (userId, role) => {
@@ -87,7 +88,7 @@ router.post("/register/athlete", async (req, res) => {
   }
 })
 
-// ── POST /api/auth/register/recruiter ───────────────────────
+// ── POST /api/auth/register/recruiter 
 router.post("/register/recruiter", async (req, res) => {
   try {
     const { firstName, lastName, email, password, confirmPassword, phone, organization, position } = req.body
@@ -210,7 +211,7 @@ router.post("/login", async (req, res) => {
 })
 
 
-// ── GET /api/auth/me — test protected route ──────────────────
+// ── GET /api/auth/me — test protected route 
 const { protect } = require("../middleware/auth")
 
 router.get("/me", protect, async (req, res) => {
@@ -323,6 +324,75 @@ router.post("/resend-verification", async (req, res) => {
  await sendVerificationEmail(user.email, user.firstName, verifyToken, user.role)
 
     res.json({ message: "Verification email resent. Please check your inbox." })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Server error", error: error.message })
+  }
+})
+
+// POST /api/auth/forgot-password
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body
+    if (!email) return res.status(400).json({ message: "Email is required" })
+
+    const user = await User.findOne({ email })
+
+    // Always return success even if email not found (security best practice)
+    if (!user) {
+      return res.json({ message: "If an account exists, a reset link has been sent." })
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex")
+    user.resetPasswordToken = resetToken
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+    await user.save()
+
+    try {
+      await sendPasswordResetEmail(user.email, user.firstName, resetToken)
+    } catch (emailErr) {
+      console.error("Password reset email failed:", emailErr.message)
+    }
+
+    res.json({ message: "If an account exists, a reset link has been sent." })
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Server error", error: error.message })
+  }
+})
+
+// POST /api/auth/reset-password
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body
+
+    if (!token || !password) {
+      return res.status(400).json({ message: "Token and new password are required" })
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" })
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() },
+    })
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Reset link is invalid or has expired. Please request a new one.",
+        expired: true,
+      })
+    }
+
+    user.password = password  
+    user.resetPasswordToken = null
+    user.resetPasswordExpires = null
+    await user.save()
+
+    res.json({ message: "Password reset successfully. You can now sign in." })
+
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: "Server error", error: error.message })
